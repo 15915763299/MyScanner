@@ -41,9 +41,9 @@ import java.lang.ref.SoftReference;
  * 扫码界面
  * 使用 startActivityForResult 跳转，然后回传扫描到的信息
  */
-public class ActCodeCollector extends Activity implements SurfaceHolder.Callback {
+public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
 
-    private static final Logger logger = LoggerFactory.getLogger(ActCodeCollector.class);
+    private static final Logger logger = LoggerFactory.getLogger(ActCodeScanner.class);
     private static final int REQUEST_CAMERA = 1000;
 
     private SurfaceView surface_view;
@@ -198,7 +198,7 @@ public class ActCodeCollector extends Activity implements SurfaceHolder.Callback
                 //图片旋转了90度，将扫描框的TOP作为left裁剪
                 source.setCrop(scanImageRect.top, scanImageRect.left, scanImageRect.height(), scanImageRect.width());
                 source.setData(data);//填充数据
-                AsyncDecode asyncDecode = new AsyncDecode(ActCodeCollector.this);
+                AsyncDecode asyncDecode = new AsyncDecode(ActCodeScanner.this);
                 asyncDecode.execute(source);//调用异步执行解码
             }
         }
@@ -206,9 +206,9 @@ public class ActCodeCollector extends Activity implements SurfaceHolder.Callback
 
     private static class AsyncDecode extends AsyncTask<Image, Void, String> {
 
-        private SoftReference<ActCodeCollector> actCodeCollectorSr;
+        private SoftReference<ActCodeScanner> actCodeCollectorSr;
 
-        AsyncDecode(ActCodeCollector actCodeCollector) {
+        AsyncDecode(ActCodeScanner actCodeCollector) {
             actCodeCollectorSr = new SoftReference<>(actCodeCollector);
         }
 
@@ -217,7 +217,7 @@ public class ActCodeCollector extends Activity implements SurfaceHolder.Callback
             String str = "";
 
             if (actCodeCollectorSr != null && actCodeCollectorSr.get() != null) {
-                ActCodeCollector act = actCodeCollectorSr.get();
+                ActCodeScanner act = actCodeCollectorSr.get();
 
                 Image src_data = params[0];//获取灰度数据
                 int scanResultCode = act.scanner.scanImage(src_data);//解码，返回值为0代表失败，>0表示成功
@@ -239,7 +239,7 @@ public class ActCodeCollector extends Activity implements SurfaceHolder.Callback
             super.onPostExecute(result);
 
             if (actCodeCollectorSr != null && actCodeCollectorSr.get() != null) {
-                final ActCodeCollector act = actCodeCollectorSr.get();
+                final ActCodeScanner act = actCodeCollectorSr.get();
 
                 if (null != result && result.length() > 0) {
                     act.mCamera.setPreviewCallback(null);
@@ -273,9 +273,9 @@ public class ActCodeCollector extends Activity implements SurfaceHolder.Callback
             case REQUEST_CAMERA:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     surface_view.setVisibility(View.VISIBLE);
-                    Toast.makeText(ActCodeCollector.this, "开始扫描", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ActCodeScanner.this, "开始扫描", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(ActCodeCollector.this, "相机功能被禁止", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ActCodeScanner.this, "相机功能被禁止", Toast.LENGTH_SHORT).show();
                 }
                 break;
             default:
