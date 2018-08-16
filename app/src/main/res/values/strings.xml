@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">MyScanner</string>
+
+    <string name="scan_code_tip">请将条码放入框内，即可自动扫描</string>
+</resources>
