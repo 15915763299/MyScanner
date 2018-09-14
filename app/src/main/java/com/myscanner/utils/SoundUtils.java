@@ -11,7 +11,6 @@ import java.util.HashMap;
  * 声音工具
  */
 @SuppressLint("UseSparseArrays")
-//@SuppressWarnings("deprecation")
 public class SoundUtils {
 	/**
 	 * 上下文
@@ -28,7 +27,7 @@ public class SoundUtils {
 	/**
 	 * 声音音量类型，默认为多媒体
 	 */
-	private int soundVolType = 3;
+	private int soundVolType;
 	/**
 	 * 无限循环播放
 	 */
@@ -40,11 +39,11 @@ public class SoundUtils {
 	/**
 	 * 铃声音量
 	 */
-	public static final int RING_SOUND = 2;
+	public static final int RING_SOUND = AudioManager.STREAM_RING;
 	/**
 	 * 媒体音量
 	 */
-	public static final int MEDIA_SOUND = 3;
+	public static final int MEDIA_SOUND = AudioManager.STREAM_MUSIC;
 
 	/**
 	 * 构造器内初始化
