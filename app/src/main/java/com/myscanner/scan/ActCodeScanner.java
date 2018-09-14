@@ -2,12 +2,13 @@ package com.myscanner.scan;
 
 import android.app.Activity;
 import android.content.pm.PackageManager;
-import android.graphics.PixelFormat;
+import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
+import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -17,11 +18,16 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.myscanner.App;
 import com.myscanner.R;
 import com.myscanner.utils.CameraUtils;
+import com.myscanner.utils.SoundUtils;
 import com.myscanner.view.MashCodeView;
 
+import net.sourceforge.zbar.Config;
 import net.sourceforge.zbar.Image;
+import net.sourceforge.zbar.ImageScanner;
+import net.sourceforge.zbar.Symbol;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,13 +46,14 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
     private MashCodeView finder_view;
     private TextView tx_count, tx_code;
 
-    private SurfaceHolder mHolder;
     private Camera mCamera;
     private ActivityHandler activityHandler;
     private DecodeThread decodeThread;
+    private SoundUtils soundUtils;
+    private ImageScanner scanner;
+
     private Camera.Size optimalSize;
     private Rect scanImageRect;
-
     private int scanSuccessCount = 0;
     private boolean isStopCamera = false;
 
@@ -55,35 +62,63 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.act_code_collector);
 
-        surface_view = findViewById(R.id.surface_view);
         finder_view = findViewById(R.id.finder_view);
         tx_count = findViewById(R.id.tx_count);
         tx_code = findViewById(R.id.tx_code);
         tx_count.setVisibility(View.INVISIBLE);
         tx_code.setVisibility(View.INVISIBLE);
 
-        mHolder = surface_view.getHolder();
-        mHolder.addCallback(this);
-        activityHandler = new ActivityHandler(this);
-        decodeThread = new DecodeThread(this);
-        decodeThread.start();
+        surface_view = findViewById(R.id.surface_view);
+        SurfaceHolder surfaceHolder = surface_view.getHolder();
+        surfaceHolder.addCallback(this);
+        //surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
+        soundUtils = new SoundUtils(App.getApp(), SoundUtils.RING_SOUND);
+        soundUtils.putSound(0, R.raw.beep);
+
+        scanner = new ImageScanner();//创建扫描器
+        scanner.setConfig(0, Config.X_DENSITY, 2);//行扫描间隔
+        scanner.setConfig(0, Config.Y_DENSITY, 2);//列扫描间隔
+        scanner.setConfig(0, Config.ENABLE, 0);//Disable all the Symbols
+        int[] symbolTypeArray = new int[]{Symbol.CODE39, Symbol.QRCODE, Symbol.EAN13, Symbol.CODE128};
+        for (int symbolType : symbolTypeArray) {
+            scanner.setConfig(symbolType, Config.ENABLE, 1);//Only symbolType is enable
+        }
 
         getPermission();
     }
 
-    private void getPermission() {
-        if (Build.VERSION.SDK_INT > 22) {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                //先判断有没有权限 ，没有就在这里进行权限的申请
-                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, REQUEST_CAMERA);
-                //关闭 surface view
-                surface_view.setVisibility(View.GONE);
-            } /*else {说明已经获取到摄像头权限了 想干嘛干嘛}*/
-        } /*else {这个说明系统版本在6.0之下，不需要动态获取权限。}*/
+    @Override
+    public void surfaceCreated(SurfaceHolder surfaceHolder) {
+        logger.error("surfaceCreated");
+        initCamera();
     }
 
     @Override
-    public void surfaceCreated(SurfaceHolder surfaceHolder) {
+    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+        logger.error("surfaceChanged");
+        if (surfaceHolder.getSurface() != null) {
+            if (mCamera != null) {
+                mCamera.stopPreview();
+                isStopCamera = true;
+            }
+
+            try {
+                setCameraParameter(surfaceHolder);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            startCamera();
+        }
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+        logger.error("surfaceDestroyed");
+        releaseCamera();
+    }
+
+    private void initCamera() {
         try {
             int CameraIndex = CameraUtils.findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
             if (CameraIndex == -1) {
@@ -91,26 +126,19 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
             } else {
                 mCamera = Camera.open(CameraIndex);
             }
+
+            if (activityHandler == null) {
+                activityHandler = new ActivityHandler(this);
+                decodeThread = new DecodeThread(this);
+                decodeThread.start();
+            }
         } catch (Exception e) {
             e.printStackTrace();
             mCamera = null;
         }
     }
 
-    @Override
-    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-        if (mHolder.getSurface() == null) return;
-        stopCamera();
-        try {
-            setCameraParameter();
-            startCamera();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+    private void releaseCamera() {
         if (mCamera != null) {
             mCamera.setPreviewCallback(null);
             mCamera.release();
@@ -121,29 +149,30 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
     /**
      * 设置照相机参数
      */
-    private void setCameraParameter() throws Exception {
+    private void setCameraParameter(SurfaceHolder surfaceHolder) throws Exception {
         Camera.Parameters parameters = mCamera.getParameters(); // 获取各项参数
-        parameters.setPictureFormat(PixelFormat.JPEG); // 设置图片格式
+        parameters.setPictureFormat(ImageFormat.NV21); // 设置图片格式，Android下摄像头预览数据为 ImageFormat.NV21 格式
         parameters.setJpegQuality(100); // 设置照片质量
-        optimalSize = CameraUtils.calBestPreviewSize(parameters, 0.6f);
+
+        if (optimalSize == null) {
+            optimalSize = CameraUtils.calBestPreviewSize(parameters, 0.6f);
+        }
+        if (scanImageRect == null) {
+            scanImageRect = finder_view.getScanImageRect(optimalSize.height, optimalSize.width);
+        }
         parameters.setPictureSize(optimalSize.width, optimalSize.height);
         parameters.setPreviewSize(optimalSize.width, optimalSize.height);
-        scanImageRect = finder_view.getScanImageRect(optimalSize.height, optimalSize.width);
+
+        CameraUtils.setFlash(parameters);
+        CameraUtils.setZoom(parameters);
+        if ((!Camera.Parameters.ANTIBANDING_50HZ.equals(parameters.getAntibanding()))
+                && CameraUtils.isSupportedAntibanding(parameters, Camera.Parameters.ANTIBANDING_50HZ)) {
+            parameters.setAntibanding(Camera.Parameters.ANTIBANDING_50HZ);
+        }
 
         mCamera.setParameters(parameters);
         mCamera.setDisplayOrientation(90);//竖屏显示
-        mCamera.setPreviewDisplay(mHolder);
-        mCamera.setPreviewCallback(previewCallback);
-    }
-
-    private void stopCamera() {
-        if (mCamera != null) {
-            mCamera.stopPreview();
-            mCamera.setPreviewCallback(null);
-            mCamera.autoFocus(null);
-            isStopCamera = true;
-            logger.error("stop preview");
-        }
+        mCamera.setPreviewDisplay(surfaceHolder);
     }
 
     private void startCamera() {
@@ -154,6 +183,51 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
             isStopCamera = false;
             logger.error("start preview");
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        releaseCamera();
+        if (activityHandler != null) {
+            quitDecodeThread();
+            activityHandler = null;
+        }
+    }
+
+    private void quitDecodeThread() {
+        decodeThread.getHandler().getLooper().quit();
+        try {
+            decodeThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // 清除Message
+        activityHandler.removeMessages(R.id.decode_succeeded);
+        activityHandler.removeMessages(R.id.decode_finish);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Process.killProcess(Process.myPid());
+        System.exit(0);
+    }
+
+    //**************************************************************************
+    // * 6.0+权限
+    //**************************************************************************
+
+    private void getPermission() {
+        if (Build.VERSION.SDK_INT > 22) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                //先判断有没有权限 ，没有就在这里进行权限的申请
+                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, REQUEST_CAMERA);
+                //关闭 surface view
+                surface_view.setVisibility(View.GONE);
+            } /*else {说明已经获取到摄像头权限了 想干嘛干嘛}*/
+        } /*else {这个说明系统版本在6.0之下，不需要动态获取权限。}*/
     }
 
     @Override
@@ -172,26 +246,6 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         }
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        quitDecodeThread();
-    }
-
-    private void quitDecodeThread() {
-        Message quit = Message.obtain(decodeThread.getHandler(), R.id.quit_decode);
-        quit.sendToTarget();
-        try {
-            decodeThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        // 清除Message
-        activityHandler.removeMessages(R.id.decode_succeeded);
-        activityHandler.removeMessages(R.id.decode_finish);
-    }
-
     //**************************************************************************
     // * 回调
     //**************************************************************************
@@ -202,14 +256,17 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         public void onPreviewFrame(byte[] data, Camera camera) {
             if (previewCallback != null) {
                 logger.error("start decode");
+                if (mCamera != null) {
+                    mCamera.setPreviewCallback(null);
+                }
 
                 //创建解码图像，并转换为原始灰度数据，注意图片是被旋转了90度的，将扫描框的TOP作为left裁剪
                 Image source = new Image(optimalSize.width, optimalSize.height, "Y800");
                 source.setCrop(scanImageRect.top, 0, scanImageRect.height(), optimalSize.width);
                 source.setData(data);
 
-                Message message = Message.obtain(decodeThread.getHandler(), R.id.decode, source);
                 if (!isFinishing()) {
+                    Message message = Message.obtain(decodeThread.getHandler(), R.id.decode, source);
                     message.sendToTarget();
                 }
             }
@@ -222,7 +279,7 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
     private Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
         public void onAutoFocus(boolean success, Camera camera) {
             Message message = activityHandler.obtainMessage(R.id.auto_focus, success);
-            activityHandler.sendMessageDelayed(message, 1000);
+            activityHandler.sendMessageDelayed(message, 1500);
         }
     };
 
@@ -260,5 +317,13 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         if (mCamera != null) {
             mCamera.setPreviewCallback(previewCallback);
         }
+    }
+
+    public SoundUtils getSoundUtils() {
+        return soundUtils;
+    }
+
+    public ImageScanner getScanner() {
+        return scanner;
     }
 }

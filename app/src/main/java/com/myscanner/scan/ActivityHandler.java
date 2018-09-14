@@ -38,10 +38,6 @@ public class ActivityHandler extends Handler {
                         camera.autoFocus(autoFocusCallback);
                     }
                     break;
-//                case R.id.add_callbacks:
-//                    logger.error("add_callbacks");
-//                    act.addCallBacks();
-//                    break;
                 case R.id.decode_succeeded:
                     logger.error("decode_succeeded");
                     String result = (String) msg.obj;

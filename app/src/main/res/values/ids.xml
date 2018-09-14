@@ -4,7 +4,6 @@
     <item type="id" name="auto_focus" />
 
     <item type="id" name="decode" />
-    <item type="id" name="quit_decode" />
 
     <item type="id" name="decode_succeeded" />
     <item type="id" name="decode_finish" />

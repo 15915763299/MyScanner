@@ -78,11 +78,9 @@ public class SoundUtils {
 		// 实例化AudioManager对象
 		AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 		if(am != null){
-			// 返回当前AudioManager对象播放所选声音的类型的最大音量值
+			// 当前AudioManager对象播放所选声音类型的 当前音量值 与 最大音量值
 			float maxVolume = am.getStreamMaxVolume(soundVolType);
-			// 返回当前AudioManager对象的音量值
 			float currentVolume = am.getStreamVolume(soundVolType);
-			// 比值
 			float volumeRatio = currentVolume / maxVolume;
 			soundPool.play(soundPoolMap.get(order), volumeRatio, volumeRatio, 1, times, 1);
 		}
