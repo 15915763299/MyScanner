@@ -1,6 +1,7 @@
 package com.myscanner.scan;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
@@ -71,7 +72,6 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         surface_view = findViewById(R.id.surface_view);
         SurfaceHolder surfaceHolder = surface_view.getHolder();
         surfaceHolder.addCallback(this);
-        //surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 
         soundUtils = new SoundUtils(App.getApp(), SoundUtils.RING_SOUND);
         soundUtils.putSound(0, R.raw.beep);
@@ -85,6 +85,13 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
             scanner.setConfig(symbolType, Config.ENABLE, 1);//Only symbolType is enable
         }
 
+        findViewById(R.id.btn_show_dialog).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(ActCodeScanner.this);
+                builder.setTitle("Test").setMessage("test").create().show();
+            }
+        });
         getPermission();
     }
 
@@ -186,9 +193,22 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            surface_view.setVisibility(View.VISIBLE);
+        }
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
-        releaseCamera();
+        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            surface_view.setVisibility(View.GONE);
+        } else {
+            releaseCamera();
+        }
+
         if (activityHandler != null) {
             quitDecodeThread();
             activityHandler = null;
@@ -254,21 +274,19 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
      */
     private Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
         public void onPreviewFrame(byte[] data, Camera camera) {
-            if (previewCallback != null) {
-                logger.error("start decode");
-                if (mCamera != null) {
-                    mCamera.setPreviewCallback(null);
-                }
+            logger.error("start decode");
+            if (mCamera != null) {
+                mCamera.setPreviewCallback(null);
+            }
 
-                //创建解码图像，并转换为原始灰度数据，注意图片是被旋转了90度的，将扫描框的TOP作为left裁剪
-                Image source = new Image(optimalSize.width, optimalSize.height, "Y800");
-                source.setCrop(scanImageRect.top, 0, scanImageRect.height(), optimalSize.width);
-                source.setData(data);
+            //创建解码图像，并转换为原始灰度数据，注意图片是被旋转了90度的，将扫描框的TOP作为left裁剪
+            Image source = new Image(optimalSize.width, optimalSize.height, "Y800");
+            source.setCrop(scanImageRect.top, 0, scanImageRect.height(), optimalSize.width);
+            source.setData(data);
 
-                if (!isFinishing()) {
-                    Message message = Message.obtain(decodeThread.getHandler(), R.id.decode, source);
-                    message.sendToTarget();
-                }
+            if (!isFinishing()) {
+                Message message = Message.obtain(decodeThread.getHandler(), R.id.decode, source);
+                message.sendToTarget();
             }
         }
     };
@@ -278,8 +296,10 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
      */
     private Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
         public void onAutoFocus(boolean success, Camera camera) {
-            Message message = activityHandler.obtainMessage(R.id.auto_focus, success);
-            activityHandler.sendMessageDelayed(message, 1500);
+            if (activityHandler != null) {
+                Message message = activityHandler.obtainMessage(R.id.auto_focus, success);
+                activityHandler.sendMessageDelayed(message, 1000);
+            }
         }
     };
 
