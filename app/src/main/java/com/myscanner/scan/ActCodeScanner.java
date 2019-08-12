@@ -252,17 +252,15 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case REQUEST_CAMERA:
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    surface_view.setVisibility(View.VISIBLE);
-                    Toast.makeText(ActCodeScanner.this, "开始扫描", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(ActCodeScanner.this, "相机功能被禁止", Toast.LENGTH_SHORT).show();
-                }
-                break;
-            default:
-                super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CAMERA) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                surface_view.setVisibility(View.VISIBLE);
+                Toast.makeText(ActCodeScanner.this, "开始扫描", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(ActCodeScanner.this, "相机功能被禁止", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
 
@@ -313,7 +311,7 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         if (tx_code.getVisibility() == View.INVISIBLE) {
             tx_code.setVisibility(View.VISIBLE);
         }
-        tx_count.setText(++scanSuccessCount + "");
+        tx_count.setText(String.valueOf(++scanSuccessCount));
         tx_code.setText(code);
     }
 
