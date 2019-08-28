@@ -8,6 +8,9 @@ import org.slf4j.LoggerFactory;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.CountDownLatch;
 
+/**
+ * 解码线程，使用CountDownLatch保证在线程启动后才能get到handler
+ */
 final class DecodeThread extends Thread {
 
     private static final Logger logger = LoggerFactory.getLogger(DecodeThread.class);
