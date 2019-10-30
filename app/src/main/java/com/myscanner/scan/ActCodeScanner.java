@@ -21,6 +21,7 @@ import android.widget.Toast;
 
 import com.myscanner.App;
 import com.myscanner.R;
+import com.myscanner.crash.CrashHandler;
 import com.myscanner.utils.CameraUtils;
 import com.myscanner.utils.SoundUtils;
 import com.myscanner.view.MashCodeView;
@@ -76,13 +77,18 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         soundUtils = new SoundUtils(App.getApp(), SoundUtils.RING_SOUND);
         soundUtils.putSound(0, R.raw.beep);
 
-        scanner = new ImageScanner();//创建扫描器
-        scanner.setConfig(0, Config.X_DENSITY, 2);//行扫描间隔
-        scanner.setConfig(0, Config.Y_DENSITY, 2);//列扫描间隔
-        scanner.setConfig(0, Config.ENABLE, 0);//Disable all the Symbols
+        //创建扫描器
+        scanner = new ImageScanner();
+        //行扫描间隔
+        scanner.setConfig(0, Config.X_DENSITY, 2);
+        //列扫描间隔
+        scanner.setConfig(0, Config.Y_DENSITY, 2);
+        //Disable all the Symbols
+        scanner.setConfig(0, Config.ENABLE, 0);
+        //Only symbolType is enable
         int[] symbolTypeArray = new int[]{Symbol.CODE39, Symbol.QRCODE, Symbol.EAN13, Symbol.CODE128};
         for (int symbolType : symbolTypeArray) {
-            scanner.setConfig(symbolType, Config.ENABLE, 1);//Only symbolType is enable
+            scanner.setConfig(symbolType, Config.ENABLE, 1);
         }
 
         findViewById(R.id.btn_show_dialog).setOnClickListener(new View.OnClickListener() {
@@ -127,11 +133,11 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
 
     private void initCamera() {
         try {
-            int CameraIndex = CameraUtils.findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
-            if (CameraIndex == -1) {
+            int cameraIndex = CameraUtils.findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
+            if (cameraIndex == -1) {
                 mCamera = Camera.open();
             } else {
-                mCamera = Camera.open(CameraIndex);
+                mCamera = Camera.open(cameraIndex);
             }
 
             if (activityHandler == null) {
@@ -157,9 +163,12 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
      * 设置照相机参数
      */
     private void setCameraParameter(SurfaceHolder surfaceHolder) throws Exception {
-        Camera.Parameters parameters = mCamera.getParameters(); // 获取各项参数
-        parameters.setPictureFormat(ImageFormat.NV21); // 设置图片格式，Android下摄像头预览数据为 ImageFormat.NV21 格式
-        parameters.setJpegQuality(100); // 设置照片质量
+        // 获取各项参数
+        Camera.Parameters parameters = mCamera.getParameters();
+        // 设置图片格式，Android下摄像头预览数据为 ImageFormat.NV21 格式
+        parameters.setPictureFormat(ImageFormat.NV21);
+        // 设置照片质量
+        parameters.setJpegQuality(100);
 
         if (optimalSize == null) {
             optimalSize = CameraUtils.calBestPreviewSize(parameters, 0.6f);
@@ -178,7 +187,8 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         }
 
         mCamera.setParameters(parameters);
-        mCamera.setDisplayOrientation(90);//竖屏显示
+        //竖屏显示
+        mCamera.setDisplayOrientation(90);
         mCamera.setPreviewDisplay(surfaceHolder);
     }
 
@@ -293,6 +303,7 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
      * 自动对焦
      */
     private Camera.AutoFocusCallback autoFocusCallback = new Camera.AutoFocusCallback() {
+        @Override
         public void onAutoFocus(boolean success, Camera camera) {
             if (activityHandler != null) {
                 Message message = activityHandler.obtainMessage(R.id.auto_focus, success);
@@ -304,6 +315,7 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
     //**************************************************************************
     // * get & set
     //**************************************************************************
+
     public void setCode(String code) {
         if (tx_count.getVisibility() == View.INVISIBLE) {
             tx_count.setVisibility(View.VISIBLE);
