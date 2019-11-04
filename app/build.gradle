@@ -48,4 +48,5 @@ dependencies {
     api fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation files('libs/slf4j-android-1.6.1-RC1.jar')
+    implementation 'com.squareup.okhttp3:okhttp:4.0.0'
 }

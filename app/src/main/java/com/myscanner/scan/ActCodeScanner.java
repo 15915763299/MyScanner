@@ -1,7 +1,6 @@
 package com.myscanner.scan;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
@@ -90,13 +89,6 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
             scanner.setConfig(symbolType, Config.ENABLE, 1);
         }
 
-        findViewById(R.id.btn_show_dialog).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(ActCodeScanner.this);
-                builder.setTitle("Test").setMessage("test").create().show();
-            }
-        });
         getPermission();
     }
 
