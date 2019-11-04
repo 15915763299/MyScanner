@@ -21,7 +21,6 @@ import android.widget.Toast;
 
 import com.myscanner.App;
 import com.myscanner.R;
-import com.myscanner.crash.CrashHandler;
 import com.myscanner.utils.CameraUtils;
 import com.myscanner.utils.SoundUtils;
 import com.myscanner.view.MashCodeView;
@@ -166,7 +165,8 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
         // 获取各项参数
         Camera.Parameters parameters = mCamera.getParameters();
         // 设置图片格式，Android下摄像头预览数据为 ImageFormat.NV21 格式
-        parameters.setPictureFormat(ImageFormat.NV21);
+        // parameters.setPictureFormat(ImageFormat.NV21);
+        parameters.setPictureFormat(ImageFormat.JPEG);
         // 设置照片质量
         parameters.setJpegQuality(100);
 
@@ -188,7 +188,9 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
 
         mCamera.setParameters(parameters);
         //竖屏显示
-        mCamera.setDisplayOrientation(90);
+        if (!Build.MODEL.equals("K1")) {
+            mCamera.setDisplayOrientation(90);
+        }
         mCamera.setPreviewDisplay(surfaceHolder);
     }
 
@@ -281,6 +283,7 @@ public class ActCodeScanner extends Activity implements SurfaceHolder.Callback {
      * 预览数据
      */
     private Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
+        @Override
         public void onPreviewFrame(byte[] data, Camera camera) {
             logger.error("start decode");
             if (mCamera != null) {

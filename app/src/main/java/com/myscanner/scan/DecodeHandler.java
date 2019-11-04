@@ -41,13 +41,15 @@ final class DecodeHandler extends Handler {
 
     private void decode(Image data, ImageScanner scanner, SoundUtils soundUtils, ActivityHandler activityHandler) {
         String result = null;
-        int scanResultCode = scanner.scanImage(data);//解码，返回值为0代表失败，>0表示成功
+        //解码，返回值为0代表失败，>0表示成功
+        int scanResultCode = scanner.scanImage(data);
 
         if (scanResultCode != 0) {
             playBeepSoundAndVibrate(soundUtils);
             SymbolSet symbols = scanner.getResults();
             for (Symbol sym : symbols) {
-                result = sym.getData() + " " + FormatUtils.getCodeName(sym.getType());//一般只有一个
+                //一般只有一个
+                result = sym.getData() + " " + FormatUtils.getCodeName(sym.getType());
             }
             logger.error("BarCode -----> " + result);
         }
